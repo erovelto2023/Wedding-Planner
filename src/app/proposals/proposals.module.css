@@ -1,0 +1,92 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  color: var(--text-primary);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.table th, .table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.table th {
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.table tr:hover {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+.status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.statusDraft {
+  background: #E0E0E0;
+  color: #616161;
+}
+
+.statusSent {
+  background: #BBDEFB;
+  color: #1976D2;
+}
+
+.statusSigned {
+  background: #C8E6C9;
+  color: #388E3C;
+}
+
+.statusPaid {
+  background: #FFF9C4;
+  color: #FBC02D;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionBtn {
+  background: none;
+  border: 1px solid var(--accent-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.actionBtn:hover {
+  background: var(--accent-secondary);
+  color: white;
+}

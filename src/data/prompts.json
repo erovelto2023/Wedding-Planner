@@ -1,0 +1,238 @@
+[
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "Help me create a wedding planning timeline based on my wedding date. My wedding date is [Date]. Please include major milestones like booking vendors, sending invitations, and final fittings."
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "What should I prioritize first in my wedding planning? Here is my current situation: [Briefly describe where you are at]. What are the absolute must-dos in the first 30 days?"
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "I have [X] months to plan, what's my week-by-week checklist? Break it down so I don't feel overwhelmed, focusing on high-priority items first."
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "What am I forgetting in my planning process? Here is what I have done so far: [List items]. Based on a standard wedding checklist, what are the hidden or easily overlooked tasks?"
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "Help me delegate tasks to my wedding party/family. I need to assign tasks for [decorating, handling vendors, assisting guests, etc.]. Create a polite but clear message I can send to each person."
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "Help me create a wedding planning timeline for a short engagement (3 months). What can we skip and what must be done immediately?"
+  },
+  {
+    "category": "AI Planning Assistant Prompts",
+    "prompt": "Help me plan a destination wedding in [Country/Location]. What are the legal requirements and timeline differences I need to know?"
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "Create a budget breakdown for [X] guests in [Location]. My total budget is [Amount]. Please allocate percentages for venue, catering, photography, attire, and entertainment based on industry averages."
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "Where can I save money without sacrificing quality? My wedding theme is [Theme] and I am looking to cut costs specifically in [category, e.g., florals, catering]."
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "How much should I allocate for [category]? My total budget is [Amount] and I have [X] guests. What is a realistic range for this category in my area?"
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "I went over budget on [item], where can I cut costs? I spent [Amount] more than planned. Suggest specific areas in my remaining checklist where I can make up the difference."
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "Show me average costs for vendors in my area. I am looking for [photographers, bands, florists] in [City/Region]. What should I expect to pay for mid-range to premium services?"
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "Create a budget for a micro-wedding with [X] guests. We want it to feel luxury but on a smaller scale. How should we allocate [Amount]?"
+  },
+  {
+    "category": "Budget & Cost Prompts",
+    "prompt": "Suggest ways to have an eco-friendly wedding on a budget. What are some sustainable choices that also save money?"
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "What questions should I ask potential [photographers/caterers/etc.]? I am looking for a [style, e.g., documentary photographer / buffet caterer]. Give me 10 specific questions to assess their experience and fit."
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "Help me compare these vendor quotes. Vendor A offers [Details] for [Price]. Vendor B offers [Details] for [Price]. Which one provides better value for a [Theme] wedding?"
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "What red flags should I watch for in vendor contracts? Specifically for [venue / caterer / photographer] contracts. What clauses are often predatory or risky for the couple?"
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "Generate an inquiry email to [vendor type]. I want to check availability for [Date] and request a pricing guide. My wedding will be at [Venue] for [X] guests."
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "Help me negotiate with [vendor]. They quoted [Amount] for [Services]. I really want to work with them but my budget is [Amount]. How can I ask for a discount or adjusted package politely?"
+  },
+  {
+    "category": "Vendor Selection Prompts",
+    "prompt": "What questions should I ask a destination wedding venue? I need to know about catering, local laws, and guest accommodation."
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "Suggest color palettes for a [season] [theme] wedding. I want a vibe that is [e.g., romantic, moody, classic]. Provide 3 distinct palette options with hex codes or specific shade names."
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "Help me create a cohesive design vision. My venue is [Venue Type, e.g., a rustic barn] and I like [Elements, e.g., fairy lights, greenery, vintage furniture]. How do I pull this together without it looking cluttered?"
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "What decor works best for [venue type]? Give me 5 high-impact decor ideas that maximize the space at a [e.g., industrial warehouse / hotel ballroom]."
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "Generate a mood board description for my [rustic/modern/etc.] wedding. I need to describe the aesthetic to my florist and decorator so they understand the exact vibe I want."
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "Suggest floral arrangements for my color scheme. My scheme is [Colors] and the season is [Season]. What flowers are in season and fit this look for bouquets and centerpieces?"
+  },
+  {
+    "category": "Design & Style Prompts",
+    "prompt": "Suggest decor for a minimalist, modern wedding. I want it to look clean and elegant, not cold. What materials should we use?"
+  },
+  {
+    "category": "Guest List & Seating Prompts",
+    "prompt": "Help me categorize my guest list (A-list, B-list, etc.). I have [X] spots but [Y] people I want to invite. Give me a strategy for managing the B-list without offending anyone."
+  },
+  {
+    "category": "Guest List & Seating Prompts",
+    "prompt": "Create seating arrangements for [X] tables with these constraints: [List constraints, e.g., Table 1 needs to be near the dance floor, Aunt Jane cannot sit with Uncle Bob]."
+  },
+  {
+    "category": "Guest List & Seating Prompts",
+    "prompt": "How do I handle plus-ones and children? I want a [child-free / adult-only] wedding but have some close family with kids. How do I state this clearly and politely on the invitations?"
+  },
+  {
+    "category": "Guest List & Seating Prompts",
+    "prompt": "Help me write invitation wording for [situation]. We are hosting the wedding ourselves and want it to feel [formal / casual]. How do we phrase the invitation?"
+  },
+  {
+    "category": "Guest List & Seating Prompts",
+    "prompt": "Suggest ways to handle difficult guest dynamics. I have divorced parents who do not get along. How do I manage seating and photos to keep the peace?"
+  },
+  {
+    "category": "Timeline & Schedule Prompts",
+    "prompt": "Create a detailed day-of timeline for my wedding. The ceremony starts at [Time] and the reception ends at [Time]. I am doing a first look at [Time]. Include buffer times."
+  },
+  {
+    "category": "Timeline & Schedule Prompts",
+    "prompt": "How much time should I allocate for [activity]? Specifically [e.g., family photos, hair and makeup for 6 bridesmaids]. What is the industry standard to ensure we don't run late?"
+  },
+  {
+    "category": "Attire & Beauty Prompts",
+    "prompt": "What dress styles suit my body type and venue? I have an [e.g., hourglass] figure and the venue is [e.g., a beach / formal cathedral]. Suggest 3 styles."
+  },
+  {
+    "category": "Attire & Beauty Prompts",
+    "prompt": "Help me create a bridal party attire guide. I want the bridesmaids in [Color] but allowing different styles. How do I guide them so they look cohesive?"
+  },
+  {
+    "category": "Ceremony & Vows Prompts",
+    "prompt": "Help me write personalized wedding vows. I want them to be [e.g., funny, emotional, short]. Here are 3 things I love about my partner: [List]. Help me structure them."
+  },
+  {
+    "category": "Ceremony & Vows Prompts",
+    "prompt": "Suggest ceremony readings for [theme/religion]. We want something that speaks about [e.g., friendship, commitment, adventure] but isn't too cliché."
+  },
+  {
+    "category": "Reception & Entertainment Prompts",
+    "prompt": "Help me plan my reception flow. We have [X] hours. How do we structure dinner, speeches, dances, and open floor to keep guests engaged?"
+  },
+  {
+    "category": "Reception & Entertainment Prompts",
+    "prompt": "Suggest unique reception ideas. I want something interactive for guests besides just dancing. What are some fun activation ideas?"
+  },
+  {
+    "category": "Food & Beverage Prompts",
+    "prompt": "Help me design a menu for [dietary restrictions]. I have guests who are [vegan, gluten-free, nut-allergic]. How do I create a menu that caters to everyone without being boring?"
+  },
+  {
+    "category": "Food & Beverage Prompts",
+    "prompt": "Suggest cocktail hour appetizers. The theme is [Theme] and we are having a [formal/casual] wedding. What are 5 crowd-pleasing options?"
+  },
+  {
+    "category": "Communication & Etiquette Prompts",
+    "prompt": "Help me write a wedding website welcome message. We want it to feel [warm/funny/formal] and set the tone for our [Theme] wedding."
+  },
+  {
+    "category": "Communication & Etiquette Prompts",
+    "prompt": "Create save-the-date wording. We are having a [local/destination] wedding on [Date]. How do we phrase it to get guests excited?"
+  },
+  {
+    "category": "Problem-Solving Prompts",
+    "prompt": "What's my backup plan for outdoor wedding rain? My ceremony is outdoors at [Venue]. What are the logistical steps to transition to the indoor backup space smoothly?"
+  },
+  {
+    "category": "Problem-Solving Prompts",
+    "prompt": "How do I handle a vendor cancellation? My [Vendor Type] canceled [X] weeks before the wedding. What are the immediate steps to find a replacement?"
+  },
+  {
+    "category": "Personalization Prompts",
+    "prompt": "Suggest ways to incorporate our cultural traditions. We want to blend [Culture A] and [Culture B] traditions in our ceremony and reception. Give us 3 ideas."
+  },
+  {
+    "category": "Personalization Prompts",
+    "prompt": "Help me personalize our wedding favors. We like [Hobbies/Interests]. What are some unique, useful favor ideas that reflect us?"
+  },
+  {
+    "category": "Post-Wedding Prompts",
+    "prompt": "Help me write thank-you notes. We received [Gift] from [Name]. How do we phrase it to sound sincere and personal?"
+  },
+  {
+    "category": "Onboarding & Setup Prompts",
+    "prompt": "Tell me about your wedding vision. I want to help you plan. What is the overall feeling or style you want to achieve?"
+  },
+  {
+    "category": "Decision-Making Prompts",
+    "prompt": "Help me decide between [option A] and [option B]. Option A costs [Price] and offers [Details]. Option B costs [Price] and offers [Details]. Which is better for a [Theme] wedding?"
+  },
+  {
+    "category": "Checklist & Task Prompts",
+    "prompt": "What do I need to do this week? I am [X] months out from the wedding. Give me a checklist of 5 items to focus on right now."
+  },
+  {
+    "category": "Wellness & Self-Care Prompts",
+    "prompt": "Help me manage wedding planning stress. I am feeling overwhelmed by [specific stressor]. What are some daily or weekly habits to keep me grounded?"
+  },
+  {
+    "category": "Speeches & Toasts Prompts",
+    "prompt": "Help me write a Maid of Honor speech. I have known the bride for [X] years. We have a funny memory about [Memory]. Help me make it emotional but funny."
+  },
+  {
+    "category": "Speeches & Toasts Prompts",
+    "prompt": "Help me write a Best Man speech. I want to roast the groom politely but focus on how great they are together. Here is a story: [Story]."
+  },
+  {
+    "category": "Speeches & Toasts Prompts",
+    "prompt": "Help me write a Proposal speech. I want to propose to my partner at [Location]. I love their [Trait]. Help me write a short, romantic speech."
+  },
+  {
+    "category": "Games & Activities Prompts",
+    "prompt": "Suggest fun games for a Bridal Shower. We want games that are interactive but not embarrassing for the bride. Give me 3 ideas."
+  },
+  {
+    "category": "Games & Activities Prompts",
+    "prompt": "Create a list of activities for a Bachelorette party in [Location]. We like [e.g., wine tasting, dancing, relaxing]. Suggest a 2-day itinerary."
+  },
+  {
+    "category": "Bridal Party Management Prompts",
+    "prompt": "Help me create a list of duties for the Maid of Honor and Best Man. What are they responsible for before and on the wedding day?"
+  },
+  {
+    "category": "Bachelor & Bachelorette Prompts",
+    "prompt": "Help me plan a Bachelor party in [Location]. The groom likes [Interests]. Suggest a balanced itinerary with daytime and nighttime activities."
+  }
+]

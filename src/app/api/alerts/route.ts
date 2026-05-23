@@ -15,11 +15,11 @@ export async function GET() {
     const db = client.db('wedding-planner');
     const userId = (session.user as any).id;
 
-    const meetings = await db.collection('meetings').find({ userId }).toArray();
-    return NextResponse.json(meetings);
+    const alerts = await db.collection('custom_alerts').find({ userId, acknowledged: { $ne: true } }).toArray();
+    return NextResponse.json(alerts);
   } catch (error) {
-    console.error('Failed to fetch meetings:', error);
-    return NextResponse.json({ error: 'Failed to fetch meetings' }, { status: 500 });
+    console.error('Failed to fetch custom alerts:', error);
+    return NextResponse.json({ error: 'Failed to fetch custom alerts' }, { status: 500 });
   }
 }
 
@@ -35,21 +35,20 @@ export async function POST(request: Request) {
     const userId = (session.user as any).id;
 
     const body = await request.json();
-    const newMeeting = {
+    const newAlert = {
       userId,
-      title: body.title,
-      time: body.time,
-      date: body.date,
-      description: body.description || '',
-      location: body.location || '',
+      message: body.message,
+      project: body.project || 'General Reminder',
+      type: body.type || 'warning', // 'danger' | 'warning'
+      acknowledged: false,
       createdAt: new Date()
     };
 
-    const result = await db.collection('meetings').insertOne(newMeeting);
-    return NextResponse.json({ ...newMeeting, _id: result.insertedId.toString() });
+    const result = await db.collection('custom_alerts').insertOne(newAlert);
+    return NextResponse.json({ ...newAlert, _id: result.insertedId.toString() });
   } catch (error) {
-    console.error('Failed to create meeting:', error);
-    return NextResponse.json({ error: 'Failed to create meeting' }, { status: 500 });
+    console.error('Failed to create custom alert:', error);
+    return NextResponse.json({ error: 'Failed to create custom alert' }, { status: 500 });
   }
 }
 
@@ -65,32 +64,25 @@ export async function PUT(request: Request) {
     const userId = (session.user as any).id;
 
     const body = await request.json();
-    const { _id, title, time, date, description, location } = body;
+    const { _id, acknowledged } = body;
 
     if (!_id) {
-      return NextResponse.json({ error: 'Meeting ID required' }, { status: 400 });
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
-    const updateFields: any = {};
-    if (title !== undefined) updateFields.title = title;
-    if (time !== undefined) updateFields.time = time;
-    if (date !== undefined) updateFields.date = date;
-    if (description !== undefined) updateFields.description = description;
-    if (location !== undefined) updateFields.location = location;
-
-    const result = await db.collection('meetings').updateOne(
+    const result = await db.collection('custom_alerts').updateOne(
       { _id: new ObjectId(_id), userId },
-      { $set: updateFields }
+      { $set: { acknowledged: acknowledged === true } }
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Meeting not found or unauthorized' }, { status: 404 });
+      return NextResponse.json({ error: 'Alert not found or unauthorized' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to update meeting:', error);
-    return NextResponse.json({ error: 'Failed to update meeting' }, { status: 500 });
+    console.error('Failed to update custom alert:', error);
+    return NextResponse.json({ error: 'Failed to update custom alert' }, { status: 500 });
   }
 }
 
@@ -101,28 +93,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db('wedding-planner');
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const userId = (session.user as any).id;
 
     if (!id) {
-      return NextResponse.json({ error: 'Meeting ID required' }, { status: 400 });
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
-    const result = await db.collection('meetings').deleteOne({
+    const client = await clientPromise;
+    const db = client.db('wedding-planner');
+
+    const result = await db.collection('custom_alerts').deleteOne({
       _id: new ObjectId(id),
       userId
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Meeting not found or unauthorized' }, { status: 404 });
+      return NextResponse.json({ error: 'Alert not found or unauthorized' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete meeting:', error);
-    return NextResponse.json({ error: 'Failed to delete meeting' }, { status: 500 });
+    console.error('Failed to delete custom alert:', error);
+    return NextResponse.json({ error: 'Failed to delete custom alert' }, { status: 500 });
   }
 }

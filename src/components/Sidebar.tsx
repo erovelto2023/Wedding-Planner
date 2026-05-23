@@ -8,8 +8,20 @@ export default async function Sidebar() {
 
   return (
     <div className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '1.5rem', background: 'white', borderRight: '1px solid var(--neutral-gray)' }}>
-      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)', marginBottom: '2rem', fontFamily: 'var(--font-family)' }}>
-        MeetCraft
+      <div style={{ marginBottom: '2.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <img 
+            src="/icon.png" 
+            alt="AURA Logo" 
+            style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
+          />
+          <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '0.05em', fontFamily: 'var(--font-serif)' }}>
+            AURA
+          </span>
+        </div>
+        <div style={{ fontSize: '0.62rem', fontWeight: '700', color: 'var(--accent-primary)', letterSpacing: '0.15em', marginTop: '0.2rem', textTransform: 'uppercase' }}>
+          Luxury Wedding Planner
+        </div>
       </div>
       
       {/* Scrollable links container */}

@@ -194,6 +194,22 @@ export default function InvoicesPage() {
     }
   }
 
+  async function deleteInvoice(id: string) {
+    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    try {
+      const res = await fetch(`/api/invoices?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setInvoices(invoices.filter(inv => inv._id !== id));
+      } else {
+        alert('Failed to delete invoice');
+      }
+    } catch (error) {
+      console.error('Failed to delete invoice:', error);
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return '$' + amount.toLocaleString();
   };
@@ -303,6 +319,13 @@ export default function InvoicesPage() {
                           onClick={() => editInvoice(inv)}
                         >
                           Edit
+                        </button>
+                        <button 
+                          className="btn" 
+                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', marginLeft: '0.5rem', cursor: 'pointer' }}
+                          onClick={() => deleteInvoice(inv._id)}
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

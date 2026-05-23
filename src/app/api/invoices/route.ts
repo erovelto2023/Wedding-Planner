@@ -97,3 +97,36 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db('wedding-planner');
+    const userId = (session.user as any).id;
+
+    const result = await db.collection('invoices').deleteOne({
+      _id: new ObjectId(id),
+      userId
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete invoice:', error);
+    return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
+  }
+}

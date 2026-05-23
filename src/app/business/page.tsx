@@ -216,10 +216,9 @@ export default function BusinessPage() {
 
           <div className="card" style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))', color: 'white' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: 'white' }}>Pro Tip</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', marginBottom: '1rem' }}>
-              Connect your business bank account to automatically import transactions and save time on data entry.
+            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+              Use this as a basic bookkeeping application to keep track of your wedding business.
             </p>
-            <button className="btn" style={{ width: '100%', background: 'white', color: 'var(--accent-primary)' }}>Coming Soon</button>
           </div>
 
         </div>

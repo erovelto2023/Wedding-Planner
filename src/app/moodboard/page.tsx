@@ -103,24 +103,94 @@ export default function MoodBoardPage() {
         
         <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', marginBottom: '1rem' }}>My Boards</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {boards.map(board => (
-            <button
-              key={board.id}
-              onClick={() => setActiveBoard(board.id)}
-              style={{
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                background: activeBoard === board.id ? 'var(--accent-primary)' : 'transparent',
-                color: activeBoard === board.id ? 'white' : 'var(--text-primary)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontWeight: activeBoard === board.id ? 'bold' : 'normal',
-              }}
-            >
-              {board.name}
-            </button>
-          ))}
+          {boards.map(board => {
+            const isActive = activeBoard === board.id;
+            return (
+              <div 
+                key={board.id} 
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: isActive ? 'var(--accent-primary)' : 'transparent',
+                  color: isActive ? 'white' : 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 'bold' : 'normal',
+                  transition: 'background 0.2s',
+                }}
+                onClick={() => setActiveBoard(board.id)}
+              >
+                <span style={{ fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {board.name}
+                </span>
+                
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    gap: '0.25rem', 
+                    marginLeft: '0.5rem',
+                    opacity: isActive ? 1 : 0.6 
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => {
+                      const newName = prompt('Enter new board name:', board.name);
+                      if (newName && newName.trim()) {
+                        const updatedBoards = boards.map(b => 
+                          b.id === board.id ? { ...b, name: newName } : b
+                        );
+                        setBoards(updatedBoards);
+                        saveData(items, updatedBoards);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: isActive ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      padding: '2px 4px'
+                    }}
+                    title="Rename Board"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (boards.length <= 1) {
+                        alert('You must keep at least one vision board.');
+                        return;
+                      }
+                      if (confirm(`Are you sure you want to delete "${board.name}"? This will delete all of its items permanently!`)) {
+                        const updatedBoards = boards.filter(b => b.id !== board.id);
+                        const updatedItems = items.filter(i => i.boardId !== board.id);
+                        setBoards(updatedBoards);
+                        setItems(updatedItems);
+                        if (activeBoard === board.id) {
+                          setActiveBoard(updatedBoards[0].id);
+                        }
+                        saveData(updatedItems, updatedBoards);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: isActive ? 'white' : 'var(--danger)',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      padding: '2px 4px'
+                    }}
+                    title="Delete Board"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          })}
           <button
             onClick={() => {
               const name = prompt('Enter board name:');
@@ -174,6 +244,13 @@ export default function MoodBoardPage() {
 
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Print-only board header */}
+        <div className="print-only" style={{ padding: '1rem 2rem', background: 'white', borderBottom: '2px solid var(--accent-primary)', marginBottom: '1rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', margin: 0, color: 'var(--text-primary)', textAlign: 'center' }}>
+            🎀 Vision Board: {boards.find(b => b.id === activeBoard)?.name}
+          </h1>
+        </div>
+
         {/* Toolbar */}
         <div className="no-print" style={{ padding: '1rem 2rem', background: 'white', borderBottom: '1px solid var(--neutral-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--text-primary)' }}>

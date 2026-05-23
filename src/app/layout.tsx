@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./custom.css";
 import Sidebar from "@/components/Sidebar";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/auth";
@@ -17,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wedding Planner App",
-  description: "The ultimate app for weddings",
+  title: "AURA | Luxury Wedding Planner",
+  description: "The ultimate luxury planner workspace for your perfect day",
 };
 
 export default async function RootLayout({

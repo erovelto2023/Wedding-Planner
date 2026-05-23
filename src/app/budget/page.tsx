@@ -172,7 +172,16 @@ export default function BudgetPage() {
     return acc;
   }, {} as Record<string, BudgetItem[]>);
 
+  // Categories that actually have items (for accordion display)
   const categories = Object.keys(groupedItems).sort();
+
+  // All possible categories for the "Add Item" select dropdown
+  const allSelectCategories = Array.from(new Set([
+    'Venue', 'Catering', 'Photography', 'Florals', 'Attire', 'Beauty', 'Entertainment',
+    'Transportation', 'Decor', 'Gifts', 'Rings', 'Stationery', 'Ceremony', 'Rentals',
+    'Photo/Video', 'Planners', 'Pre-Wedding', 'Travel', 'Events', 'Misc',
+    ...Object.keys(groupedItems)
+  ])).sort();
 
   // Calculate expenses by category
   const expensesByCategory = expenses.reduce((acc, exp) => {
@@ -271,19 +280,15 @@ export default function BudgetPage() {
 
         {/* Add New Item Form */}
         <div className="no-print" style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          {/* NEW: Datalist for categories allows typing custom ones! */}
-          <input
-            list="categories"
+          <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            placeholder="Category"
-            style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--neutral-gray)', background: 'var(--bg-primary)', width: '150px' }}
-          />
-          <datalist id="categories">
-            {categories.map(cat => (
-              <option key={cat} value={cat} />
+            style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--neutral-gray)', background: 'var(--bg-primary)', width: '160px' }}
+          >
+            {allSelectCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
             ))}
-          </datalist>
+          </select>
 
           <input
             type="text"
@@ -305,7 +310,7 @@ export default function BudgetPage() {
         {/* Grouped Budget Items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {categories.map(category => {
-            const catItems = groupedItems[category];
+            const catItems = groupedItems[category] || [];
             const catEstimated = catItems.reduce((sum, item) => sum + item.estimated, 0);
             const catActual = catItems.reduce((sum, item) => sum + item.actual, 0);
             const catCalculatedExpenses = expensesByCategory[category] || 0;

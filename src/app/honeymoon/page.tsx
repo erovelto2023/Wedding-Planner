@@ -168,6 +168,7 @@ export default function HoneymoonPage() {
   const [airlines, setAirlines] = useState<Airline[]>([]);
 
   // Input states
+  const [numDays, setNumDays] = useState<number>(7);
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [passportExpiry, setPassportExpiry] = useState<string>('2027-06-30');
   const [activeResearchSubtab, setActiveResearchSubtab] = useState<'flights' | 'lodging' | 'activities'>('flights');
@@ -279,6 +280,19 @@ export default function HoneymoonPage() {
     setDaysRemaining(diff > 0 ? diff : 0);
   }, [settings.startDate]);
 
+  // Sync trip duration in days dynamically from settings
+  useEffect(() => {
+    if (settings.startDate && settings.endDate) {
+      const start = new Date(settings.startDate).getTime();
+      const end = new Date(settings.endDate).getTime();
+      const diffTime = end - start;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        setNumDays(diffDays);
+      }
+    }
+  }, [settings.startDate, settings.endDate]);
+
   // Auditor alert checks
   if (mounted) {
     const weather = checkWeatherWarnings(settings.destination, settings.startDate);
@@ -290,6 +304,9 @@ export default function HoneymoonPage() {
       safetyAlerts.push({ type: 'error', message: '⚠️ Passport Expiry Danger: Your passport expires within 6 months of your return. Renew immediately!' });
     }
   }
+
+  const maxItineraryDay = itinerary.reduce((max, item) => Math.max(max, item.dayNumber || 1), 1);
+  const displayDays = Math.max(numDays, maxItineraryDay);
 
   // --- HANDLERS ---
 
@@ -521,6 +538,69 @@ export default function HoneymoonPage() {
     }
   };
 
+  const handleAddResearchOption = async () => {
+    const categoryItems = research.filter(r => r.category === activeResearchSubtab);
+    const nextOptionNum = categoryItems.reduce((max, item) => Math.max(max, item.optionNumber || 0), 0) + 1;
+
+    const newOption: Partial<ResearchItem> = {
+      category: activeResearchSubtab,
+      optionNumber: nextOptionNum,
+      title: `New ${activeResearchSubtab === 'flights' ? 'Flight' : 'Lodging'} Option`,
+      cost: 0,
+      amenities: '',
+      cancellationTerms: '',
+      pros: '',
+      cons: '',
+      status: 'comparing',
+      ...(activeResearchSubtab === 'flights' ? {
+        airportWebsite: '',
+        phoneNumber: '',
+        baggageAllowance: '',
+        terminalInfo: '',
+        layoverDetails: '',
+        bookingLink: ''
+      } : {
+        website: '',
+        email: '',
+        checkInTime: '',
+        checkOutTime: '',
+        roomType: '',
+        breakfastIncluded: false,
+        cancellationDeadline: '',
+        depositStatus: '',
+        address: ''
+      })
+    };
+
+    try {
+      const res = await fetch('/api/honeymoon?type=research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOption)
+      });
+      if (res.ok) {
+        const added = await res.json();
+        setResearch(prev => [...prev, added]);
+      }
+    } catch (err) {
+      console.error('Failed to add research option:', err);
+    }
+  };
+
+  const handleDeleteResearchOption = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this comparison option?')) return;
+    try {
+      const res = await fetch(`/api/honeymoon?type=research&id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setResearch(prev => prev.filter(r => r._id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete research option:', err);
+    }
+  };
+
   // Research Comparisons & Reservation Pipeline
   const handleUpdateResearch = async (item: ResearchItem, field: keyof ResearchItem, value: any) => {
     const updatedItem = { ...item, [field]: value };
@@ -617,6 +697,46 @@ export default function HoneymoonPage() {
 
     // Notify user
     alert(`🎉 Awesome! ${item.title} has been successfully reserved! We've automatically added it to your Itinerary (Day ${targetDay}) and created an expense line in your Budget Ledger.`);
+  };
+
+  const handleDeleteDay = async (dayNum: number) => {
+    const itemsOnDay = itinerary.filter(i => i.dayNumber === dayNum);
+    const itemsAfterDay = itinerary.filter(i => i.dayNumber > dayNum);
+
+    let confirmMsg = `Are you sure you want to delete Day ${dayNum}?`;
+    if (itemsOnDay.length > 0) {
+      confirmMsg += ` This will also delete the ${itemsOnDay.length} planned items scheduled on Day ${dayNum}.`;
+    }
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      // 1. Delete items on Day d
+      const deletePromises = itemsOnDay.map(item =>
+        fetch(`/api/honeymoon?type=itinerary&id=${item._id}`, { method: 'DELETE' })
+      );
+      await Promise.all(deletePromises);
+
+      // 2. Shift dayNumber for items after Day d
+      const shiftPromises = itemsAfterDay.map(item =>
+        fetch('/api/honeymoon?type=itinerary', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...item, dayNumber: item.dayNumber - 1 })
+        })
+      );
+      await Promise.all(shiftPromises);
+
+      // 3. Update frontend state
+      setItinerary(prev => {
+        const remaining = prev.filter(i => i.dayNumber !== dayNum);
+        return remaining.map(i => i.dayNumber > dayNum ? { ...i, dayNumber: i.dayNumber - 1 } : i);
+      });
+
+      // 4. Decrement numDays
+      setNumDays(prev => Math.max(1, prev - 1));
+    } catch (err) {
+      console.error('Failed to delete day:', err);
+    }
   };
 
   // Itinerary CRUD
@@ -1006,7 +1126,7 @@ export default function HoneymoonPage() {
                   { key: 'start', label: '🎬 Onboarding & Settings', desc: 'Config, categories, traveler names' },
                   { key: 'destination', label: '🗺️ Destinations', desc: 'All candidate destinations + excursions' },
                   { key: 'research', label: '🔍 Flights & Hotels', desc: 'All comparison options + airport DB' },
-                  { key: 'itinerary', label: '📅 Full Itinerary', desc: 'All 30 days schedule' },
+                  { key: 'itinerary', label: '📅 Full Itinerary', desc: 'Full travel timeline schedule' },
                   { key: 'budget', label: '💰 Budget Ledger', desc: 'All expenses & currency converter' },
                   { key: 'checklist', label: '⏳ Milestone Checklist', desc: 'All countdown tasks' },
                   { key: 'packing', label: '🎒 Packing Lists', desc: 'Both traveler checklists' },
@@ -1666,29 +1786,48 @@ export default function HoneymoonPage() {
           </div>
 
           {/* Subtabs selection ribbon */}
-          <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--neutral-gray)', paddingBottom: '0.5rem' }}>
-            {[
-              { id: 'flights', label: '✈️ Flights Operational Grid' },
-              { id: 'lodging', label: '🏨 Lodging & Resorts Registry' }
-            ].map(sub => (
-              <button
-                key={sub.id}
-                onClick={() => setNewExpenseItem({ category: sub.id === 'flights' ? 'Flights' : 'Lodging' })} // state hook sync
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  background: activeResearchSubtab === sub.id ? 'var(--accent-secondary)' : 'transparent',
-                  color: activeResearchSubtab === sub.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  fontWeight: 700,
-                  fontSize: '0.825rem',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                onClickCapture={() => setActiveResearchSubtab(sub.id as any)}
-              >
-                {sub.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--neutral-gray)', paddingBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {[
+                { id: 'flights', label: '✈️ Flights Operational Grid' },
+                { id: 'lodging', label: '🏨 Lodging & Resorts Registry' }
+              ].map(sub => (
+                <button
+                  key={sub.id}
+                  onClick={() => setNewExpenseItem({ category: sub.id === 'flights' ? 'Flights' : 'Lodging' })} // state hook sync
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    background: activeResearchSubtab === sub.id ? 'var(--accent-secondary)' : 'transparent',
+                    color: activeResearchSubtab === sub.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    fontWeight: 700,
+                    fontSize: '0.825rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                  onClickCapture={() => setActiveResearchSubtab(sub.id as any)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleAddResearchOption}
+              className="btn btn-primary"
+              style={{
+                fontSize: '0.8rem',
+                padding: '0.5rem 1rem',
+                background: 'var(--accent-primary)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              ➕ Add Custom {activeResearchSubtab === 'flights' ? 'Flight' : 'Lodging'} Option
+            </button>
           </div>
 
           {/* Comparisons Matrix Grid */}
@@ -1709,11 +1848,20 @@ export default function HoneymoonPage() {
                     <span style={{ fontSize: '0.8rem', fontWeight: 800, background: 'var(--neutral-gray)', color: 'var(--text-secondary)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                       Option #{item.optionNumber}
                     </span>
-                    {item.status === 'reserved' && (
-                      <span style={{ background: '#28a745', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                        RESERVED
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {item.status === 'reserved' && (
+                        <span style={{ background: '#28a745', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                          RESERVED
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleDeleteResearchOption(item._id!)}
+                        style={{ border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.2rem 0.4rem' }}
+                        title="Delete this option"
+                      >
+                        🗑️ Delete Option
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem' }}>
@@ -2185,12 +2333,34 @@ export default function HoneymoonPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
+              {Array.from({ length: displayDays }, (_, i) => i + 1).map(day => {
                 const dayItems = itinerary.filter(i => i.dayNumber === day);
                 return (
                   <div key={day} className="card" style={{ padding: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--neutral-gray)', paddingBottom: '0.5rem' }}>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--accent-primary)' }}>☀️ Day {day} Schedule</h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--accent-primary)' }}>☀️ Day {day} Schedule</h4>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDay(day)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#dc2626',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '0.2rem 0.4rem',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem'
+                          }}
+                          title={`Delete Day ${day} and shift subsequent days`}
+                        >
+                          🗑️ Delete Day
+                        </button>
+                      </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total Planned Day Cost: <strong>${dayItems.reduce((acc, curr) => acc + curr.cost, 0)}</strong></span>
                     </div>
 
@@ -2269,6 +2439,15 @@ export default function HoneymoonPage() {
                   </div>
                 );
               })}
+              
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setNumDays(prev => prev + 1)}
+                style={{ width: '100%', padding: '0.75rem', fontWeight: 'bold', border: '1px dashed var(--neutral-gray)', background: 'var(--bg-secondary)', color: 'var(--accent-primary)', cursor: 'pointer', borderRadius: '8px' }}
+              >
+                ➕ Add Another Day
+              </button>
             </div>
           </div>
 
@@ -2286,7 +2465,9 @@ export default function HoneymoonPage() {
                       onChange={(e) => setNewItineraryItem({ ...newItineraryItem, dayNumber: Number(e.target.value) })}
                       style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '6px', fontSize: '0.8rem', background: 'var(--bg-secondary)' }}
                     >
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Day {d}</option>)}
+                      {Array.from({ length: Math.max(30, displayDays) }, (_, i) => i + 1).map(d => (
+                        <option key={d} value={d}>Day {d}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -2635,7 +2816,7 @@ export default function HoneymoonPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {['6+ months out', '3 months out', '2 months out', '1 month out', '1 week out', '48 hours out'].map(section => {
+              {['6+ months out', '3 months out', '2 months out', '1 month out', '1 week out', '48 hours out', 'Day-of'].map(section => {
                 const sectionTasks = tasks.filter(t => t.timeline === section);
                 return (
                   <div key={section} style={{ borderBottom: '1px dashed var(--neutral-gray)', paddingBottom: '1.25rem' }}>
@@ -2693,6 +2874,7 @@ export default function HoneymoonPage() {
                   <option value="1 month out">⏳ 1 month out</option>
                   <option value="1 week out">⏳ 1 week out</option>
                   <option value="48 hours out">⏳ 48 hours out</option>
+                  <option value="Day-of">⏳ Day-of</option>
                 </select>
               </div>
 
@@ -2859,76 +3041,6 @@ export default function HoneymoonPage() {
             </form>
           </div>
 
-          {/* Secure Document organizer */}
-          <div className="card" style={{ padding: '1.5rem', borderTop: '4px solid #17a2b8' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>🔒 Digital Secure Document Safe</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Keep critical digital records readily accessible abroad in case of emergency (passports, insurance scans).
-            </p>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--neutral-gray)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem' }}>Document Scan</th>
-                  <th style={{ padding: '0.5rem' }}>Type</th>
-                  <th style={{ padding: '0.5rem', width: '100px' }}>Date Added</th>
-                  <th style={{ padding: '0.5rem', width: '50px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {docs.map(d => (
-                  <tr key={d._id} style={{ borderBottom: '1px solid var(--neutral-gray)' }}>
-                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>
-                      📄 {d.name}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      <span className="pill-badge" style={{ background: 'var(--bg-secondary)', fontSize: '0.7rem' }}>
-                        {d.type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>{d.dateAdded}</td>
-                    <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
-                      <button 
-                        onClick={() => handleDeleteDoc(d._id!)}
-                        style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1rem' }}
-                        title="Delete scan"
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Document safe addition */}
-            <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--neutral-gray)' }}>
-              <h4 style={{ marginTop: 0, fontSize: '0.9rem', marginBottom: '0.75rem' }}>➕ Securely Scan Document</h4>
-              <form onSubmit={handleAddDoc} style={{ display: 'flex', gap: '0.5rem' }}>
-                <input 
-                  type="text"
-                  placeholder="e.g. Flight boarding passes"
-                  value={newDocName}
-                  onChange={(e) => setNewDocName(e.target.value)}
-                  style={{ flex: 1, padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', fontSize: '0.8rem' }}
-                  required
-                />
-                <select
-                  value={newDocType}
-                  onChange={(e) => setNewDocType(e.target.value)}
-                  style={{ padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', fontSize: '0.8rem', background: 'var(--bg-primary)' }}
-                >
-                  <option value="Identification">🆔 ID</option>
-                  <option value="Insurance">🛡️ Insurance</option>
-                  <option value="Tickets">🎫 Tickets</option>
-                  <option value="Other">📄 Other</option>
-                </select>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                  🔒 Secure
-                </button>
-              </form>
-            </div>
-          </div>
 
         </div>
       )}

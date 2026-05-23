@@ -11,6 +11,12 @@ interface Guest {
   dietary?: string;
 }
 
+interface LogItem {
+  _id: string;
+  message: string;
+  createdAt?: string;
+}
+
 interface AssignedGuest {
   name: string;
   flags: string[]; // 'Mobility Aid', 'Elderly Seat', 'Child Seat'
@@ -47,11 +53,14 @@ export default function TransportationPage() {
   const [totalBudgetAllocated, setTotalBudgetAllocated] = useState<number>(5000);
 
   // Day-of operations live feed
-  const [opsFeed, setOpsFeed] = useState<string[]>([]);
+  const [opsFeed, setOpsFeed] = useState<LogItem[]>([]);
   const [newFeedMsg, setNewFeedMsg] = useState<string>('');
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editingLogText, setEditingLogText] = useState<string>('');
 
   // Form State for Adding Vehicle
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [newVehicle, setNewVehicle] = useState<Partial<Vehicle>>({
     name: '',
     type: 'Luxury Shuttle Bus',
@@ -117,7 +126,13 @@ export default function TransportationPage() {
         }
         if (logsRes.ok) {
           const logsData = await logsRes.json();
-          setOpsFeed(logsData);
+          const normalizedLogs = logsData.map((l: any, index: number) => {
+            if (typeof l === 'string') {
+              return { _id: `legacy-${index}`, message: l };
+            }
+            return l;
+          });
+          setOpsFeed(normalizedLogs);
         }
       } catch (error) {
         console.error('Failed to load transportation data:', error);
@@ -128,11 +143,85 @@ export default function TransportationPage() {
     loadData();
   }, []);
 
+  const startCreateVehicle = () => {
+    setEditingVehicle(null);
+    setNewVehicle({
+      name: '',
+      type: 'Luxury Shuttle Bus',
+      route: '',
+      time: '',
+      capacity: 24,
+      driverName: '',
+      driverPhone: '',
+      status: 'Scheduled',
+      event: 'Ceremony & Reception',
+      style: 'Luxury',
+      amenities: ['AC', 'Sound System'],
+      cost: 850,
+      depositPaid: 200,
+      tipEstimated: 150,
+      uniform: 'Semi-Formal Suit',
+      bufferTime: 20,
+      assignedGuests: []
+    });
+    setIsModalOpen(true);
+  };
+
+  const startEditVehicle = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setNewVehicle(vehicle);
+    setIsModalOpen(true);
+  };
+
   // Add Vehicle to DB
   const addVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newVehicle.name || !newVehicle.route || !newVehicle.time) {
       alert('Please fill out all required fields.');
+      return;
+    }
+
+    if (editingVehicle) {
+      const payload = {
+        ...editingVehicle,
+        ...newVehicle
+      } as Vehicle;
+
+      try {
+        const res = await fetch('/api/transportation', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          setVehicles(vehicles.map(v => v._id === editingVehicle._id ? payload : v));
+          setIsModalOpen(false);
+          setEditingVehicle(null);
+          setNewVehicle({
+            name: '',
+            type: 'Luxury Shuttle Bus',
+            route: '',
+            time: '',
+            capacity: 24,
+            driverName: '',
+            driverPhone: '',
+            status: 'Scheduled',
+            event: 'Ceremony & Reception',
+            style: 'Luxury',
+            amenities: ['AC', 'Sound System'],
+            cost: 850,
+            depositPaid: 200,
+            tipEstimated: 150,
+            uniform: 'Semi-Formal Suit',
+            bufferTime: 20,
+            assignedGuests: []
+          });
+        } else {
+          alert('Failed to update vehicle.');
+        }
+      } catch (error) {
+        console.error(error);
+      }
       return;
     }
 
@@ -265,13 +354,49 @@ export default function TransportationPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setOpsFeed([data.message, ...opsFeed]);
+        setOpsFeed([data, ...opsFeed]);
         setNewFeedMsg('');
       } else {
         alert('Failed to post dispatch log.');
       }
     } catch (error) {
       console.error('Failed to post dispatch log:', error);
+    }
+  };
+
+  // Update operational log
+  const updateOpLog = async (id: string, newMessage: string) => {
+    try {
+      const res = await fetch('/api/transportation/logs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _id: id, message: newMessage })
+      });
+      if (res.ok) {
+        setOpsFeed(opsFeed.map(log => log._id === id ? { ...log, message: newMessage } : log));
+        setEditingLogId(null);
+      } else {
+        alert('Failed to update operational log.');
+      }
+    } catch (error) {
+      console.error('Failed to update operational log:', error);
+    }
+  };
+
+  // Delete operational log
+  const deleteOpLog = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this dispatch log?')) return;
+    try {
+      const res = await fetch(`/api/transportation/logs?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setOpsFeed(opsFeed.filter(log => log._id !== id));
+      } else {
+        alert('Failed to delete operational log.');
+      }
+    } catch (error) {
+      console.error('Failed to delete operational log:', error);
     }
   };
 
@@ -364,7 +489,7 @@ export default function TransportationPage() {
           </p>
         </div>
         <div className="no-print" style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+          <button className="btn btn-primary" onClick={startCreateVehicle}>
             🚐 Create Vehicle / Shuttle
           </button>
           <button className="btn btn-secondary" onClick={() => window.print()}>
@@ -478,7 +603,7 @@ export default function TransportationPage() {
           {filteredVehicles.length === 0 ? (
             <div style={{ padding: '3rem', textAlign: 'center', background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--neutral-gray)' }}>
               <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>No vehicles found for this event filter.</p>
-              <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ marginTop: '1rem' }}>
+              <button className="btn btn-primary" onClick={startCreateVehicle} style={{ marginTop: '1rem' }}>
                 + Add Custom Vehicle
               </button>
             </div>
@@ -623,7 +748,7 @@ export default function TransportationPage() {
                           setSelectedFlags([]);
                         }}
                       >
-                        ➕ Assign Guest with Accessibility Tags
+                        ➕ Assign Guest
                       </button>
                     </div>
 
@@ -635,13 +760,22 @@ export default function TransportationPage() {
                       <div>
                         💰 <strong>Cost:</strong> ${vehicle.cost} (+${vehicle.tipEstimated} tip)
                       </div>
-                      <button 
-                        onClick={() => deleteVehicle(vehicle._id!)}
-                        className="btn btn-secondary no-print" 
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--danger)' }}
-                      >
-                        ✕ Remove
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <button 
+                          onClick={() => startEditVehicle(vehicle)}
+                          className="btn btn-secondary no-print" 
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          onClick={() => deleteVehicle(vehicle._id!)}
+                          className="btn btn-secondary no-print" 
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--danger)' }}
+                        >
+                          ✕ Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -695,12 +829,107 @@ export default function TransportationPage() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {opsFeed.map((feed, idx) => (
-                <div key={idx} style={{ fontSize: '0.8rem', background: 'var(--bg-secondary)', padding: '0.5rem', borderRadius: '4px', color: 'var(--text-secondary)' }}>
-                  {feed}
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+              {opsFeed.map((feed) => {
+                const isEditing = editingLogId === feed._id;
+                return (
+                  <div 
+                    key={feed._id} 
+                    style={{ 
+                      fontSize: '0.8rem', 
+                      background: 'var(--bg-secondary)', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      color: 'var(--text-secondary)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    {isEditing ? (
+                      <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                        <input
+                          type="text"
+                          value={editingLogText}
+                          onChange={(e) => setEditingLogText(e.target.value)}
+                          style={{ 
+                            flex: 1, 
+                            padding: '0.2rem 0.4rem', 
+                            fontSize: '0.8rem', 
+                            borderRadius: '4px', 
+                            border: '1px solid var(--neutral-gray)',
+                            background: 'var(--bg-primary)'
+                          }}
+                        />
+                        <button
+                          onClick={() => updateOpLog(feed._id, editingLogText)}
+                          style={{
+                            border: 'none',
+                            background: 'var(--accent-primary)',
+                            color: 'white',
+                            borderRadius: '4px',
+                            padding: '0.2rem 0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingLogId(null)}
+                          style={{
+                            border: 'none',
+                            background: 'var(--neutral-gray)',
+                            color: 'var(--text-secondary)',
+                            borderRadius: '4px',
+                            padding: '0.2rem 0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.5rem' }}>
+                        <span style={{ wordBreak: 'break-word', flex: 1 }}>{feed.message}</span>
+                        <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                          <button
+                            onClick={() => {
+                              setEditingLogId(feed._id);
+                              setEditingLogText(feed.message);
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              padding: '0.1rem 0.25rem',
+                              fontSize: '0.75rem'
+                            }}
+                            title="Edit dispatch message"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => deleteOpLog(feed._id)}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              padding: '0.1rem 0.25rem',
+                              fontSize: '0.75rem'
+                            }}
+                            title="Delete dispatch message"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -722,7 +951,7 @@ export default function TransportationPage() {
         }}>
           <div className="card" style={{ width: '550px', padding: '2rem', background: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', marginBottom: '1.5rem' }}>
-              🚐 Add Luxury Vehicle / Shuttle
+              {editingVehicle ? '✏️ Edit Vehicle Details' : '🚐 Add Luxury Vehicle / Shuttle'}
             </h2>
             <form onSubmit={addVehicle} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
@@ -926,7 +1155,7 @@ export default function TransportationPage() {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Save Custom Fleet
+                  {editingVehicle ? '💾 Save Changes' : 'Save Custom Fleet'}
                 </button>
               </div>
             </form>

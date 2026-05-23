@@ -1,0 +1,294 @@
+:root {
+  /* Color Palette - Inspired by MeetCraft (Modern SaaS) */
+  --bg-primary: #F4F5F7; /* Very light gray */
+  --bg-secondary: #FFFFFF; /* Pure white for cards */
+  --bg-sidebar: #FFFFFF; /* White sidebar */
+  --text-primary: #1A1D20; /* Dark charcoal */
+  --text-secondary: #6C757D; /* Medium gray */
+  --accent-primary: #6F42C1; /* Soft Purple */
+  --accent-secondary: #E8DDFF; /* Light Purple for active state */
+  --accent-hover: #5A32A3;
+  --neutral-gray: #E9ECEF; /* Light gray for borders */
+  
+  /* Status Colors */
+  --success: #28A745;
+  --warning: #FFC107;
+  --danger: #DC3545;
+  
+  /* Fonts */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  
+  /* Spacing */
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 12px; /* Softer corners for modern UI */
+  --radius-lg: 20px;
+}
+
+/* Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  line-height: 1.6;
+}
+
+/* Layout */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--neutral-gray);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px; /* Space for fixed sidebar */
+  padding: 2rem;
+  min-width: 0; /* Prevents flex items from overflowing */
+}
+
+.full-content {
+  flex: 1;
+  padding: 2rem;
+}
+
+/* Components */
+.card {
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.02);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--neutral-gray);
+  color: var(--text-primary);
+}
+
+/* Sidebar Nav */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover, .sidebar-link.active {
+  background-color: var(--accent-secondary);
+  color: var(--accent-primary);
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--neutral-gray);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--accent-primary);
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  margin-bottom: 1rem;
+  padding-right: 0.25rem;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb {
+  background: var(--neutral-gray);
+  border-radius: 4px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* =============================================
+   UNIVERSAL PRINT STYLES
+   Applied globally — sidebar hidden on all pages
+   ============================================= */
+@media print {
+
+  /* Hide sidebar and chrome */
+  .sidebar,
+  .sidebar-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove sidebar margin offset — content fills full width */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .app-layout {
+    display: block !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm;
+  }
+
+  body {
+    background: white !important;
+    color: #000 !important;
+    font-size: 11pt;
+    font-family: 'Georgia', serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cards print cleanly */
+  .card {
+    background: white !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    margin-bottom: 12pt !important;
+  }
+
+  /* Buttons hidden */
+  button,
+  .btn,
+  form input[type="submit"] {
+    display: none !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  th {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    border: 1px solid #ccc;
+    padding: 4pt 6pt;
+    text-align: left;
+  }
+
+  td {
+    border: 1px solid #ddd;
+    padding: 4pt 6pt;
+  }
+
+  /* Links */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 8pt;
+    color: #666;
+  }
+
+  /* Grid layouts collapse to single column */
+  .card > div[style*="display: grid"],
+  .card > div[style*="display:grid"] {
+    display: block !important;
+  }
+
+  /* Inputs render as plain text */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Progress bars */
+  .progress-bar {
+    border: 1px solid #ccc !important;
+  }
+
+  /* Page break utility */
+  .print-page-break {
+    page-break-before: always;
+  }
+}

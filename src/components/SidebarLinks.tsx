@@ -30,8 +30,9 @@ export default function SidebarLinks() {
       ]
     },
     {
-      title: 'Phase 2: Music & Media',
+      title: 'Phase 2: Design & Media',
       links: [
+        { href: '/moodboard', icon: '🎨', label: 'Vision Board' },
         { href: '/music', icon: '🎵', label: 'Music & Playlists' },
         { href: '/photo-video', icon: '📸', label: 'Photo & Video' },
       ]
@@ -64,10 +65,11 @@ export default function SidebarLinks() {
     {
       title: 'Business & Settings',
       links: [
-        { href: '/business', icon: '📊', label: 'Invoices', description: 'QuickBooks' },
+        { href: '/business', icon: '📊', label: 'Invoices', description: 'Billing & Payments' },
         { href: '/leads', icon: '👥', label: 'Leads' },
         { href: '/proposals', icon: '📜', label: 'Proposal Builder' },
         { href: '/settings/company', icon: '⚙️', label: 'Company Settings' },
+        { href: '/support', icon: '💬', label: 'Support', description: 'Help & Contact' },
       ]
     }
   ];

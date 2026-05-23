@@ -231,39 +231,50 @@ export default function PartyPlannerPage() {
             {isBachelor ? 'Coordinate the ultimate send-off for the groom.' : 'Plan the perfect, unforgettable getaway for the bride.'}
           </p>
         </div>
-        
-        {/* Unified Mode Toggle */}
-        <div style={{ display: 'flex', background: 'var(--neutral-light)', padding: '0.4rem', borderRadius: '30px', border: '1px solid var(--neutral-gray)' }}>
-          <button 
-            onClick={() => setPartyType('bachelor')}
-            style={{ 
-              padding: '0.6rem 1.5rem', 
-              borderRadius: '25px', 
-              border: 'none', 
-              cursor: 'pointer', 
-              fontWeight: 'bold',
-              background: isBachelor ? '#cca43b' : 'transparent',
-              color: isBachelor ? 'white' : 'var(--text-primary)',
-              transition: 'all 0.3s ease'
-            }}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {/* Print Button */}
+          <button
+            onClick={() => window.print()}
+            className="btn btn-secondary no-print"
+            style={{ whiteSpace: 'nowrap' }}
           >
-            🍾 Bachelor Mode
+            🖨️ Print Plan
           </button>
-          <button 
-            onClick={() => setPartyType('bachelorette')}
-            style={{ 
-              padding: '0.6rem 1.5rem', 
-              borderRadius: '25px', 
-              border: 'none', 
-              cursor: 'pointer', 
-              fontWeight: 'bold',
-              background: !isBachelor ? '#ff929d' : 'transparent',
-              color: !isBachelor ? 'white' : 'var(--text-primary)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            👰‍♀️ Bachelorette Mode
-          </button>
+
+          {/* Unified Mode Toggle */}
+          <div style={{ display: 'flex', background: 'var(--neutral-light)', padding: '0.4rem', borderRadius: '30px', border: '1px solid var(--neutral-gray)' }}>
+            <button 
+              onClick={() => setPartyType('bachelor')}
+              style={{ 
+                padding: '0.6rem 1.5rem', 
+                borderRadius: '25px', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontWeight: 'bold',
+                background: isBachelor ? '#cca43b' : 'transparent',
+                color: isBachelor ? 'white' : 'var(--text-primary)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              🍾 Bachelor Mode
+            </button>
+            <button 
+              onClick={() => setPartyType('bachelorette')}
+              style={{ 
+                padding: '0.6rem 1.5rem', 
+                borderRadius: '25px', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontWeight: 'bold',
+                background: !isBachelor ? '#ff929d' : 'transparent',
+                color: !isBachelor ? 'white' : 'var(--text-primary)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              👰‍♀️ Bachelorette Mode
+            </button>
+          </div>
         </div>
       </div>
 

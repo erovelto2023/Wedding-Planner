@@ -53,6 +53,17 @@ export async function GET() {
         project: 'Sales'
       });
     }
+
+    const customAlerts = await db.collection('custom_alerts').find({ userId, acknowledged: { $ne: true } }).toArray();
+    for (const a of customAlerts) {
+      alerts.push({
+        _id: a._id.toString(),
+        type: a.type || 'warning',
+        message: a.message,
+        project: a.project || 'Custom Alert',
+        isCustom: true
+      });
+    }
     
     return NextResponse.json({
       proposals: { draft: proposalCount, sent: 0 },

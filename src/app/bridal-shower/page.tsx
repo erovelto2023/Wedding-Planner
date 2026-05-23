@@ -1,11 +1,13 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function BridalShowerPage() {
   const [guests, setGuests] = useState<any[]>([]);
   const [useCustomGuest, setUseCustomGuest] = useState(false);
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
+  const [editingTodoText, setEditingTodoText] = useState('');
 
   useEffect(() => {
     async function fetchGuests() {
@@ -96,12 +98,102 @@ export default function BridalShowerPage() {
 
   const [newGift, setNewGift] = useState({ guest: '', gift: '' });
 
+  // Notes state
+  const [notes, setNotes] = useState<{ id: number; text: string; editingId: number | null }[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
+
   const timelines = ['3+ Months Before', '2 Months Before', '1 Month Before', '2+ Weeks Before', '1 Week Before', '1 Day Before', 'Day-of'];
+
+  // Load data from DB on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await fetch('/api/bridal-shower');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && !data.notFound) {
+            if (data.todos) setTodos(data.todos);
+            if (data.gifts) setGifts(data.gifts);
+            if (data.details) setDetails(data.details);
+            if (data.notes) setNotes(data.notes);
+          } else {
+            // First time: save default seed lists to DB
+            saveData(todos, gifts, details, notes);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load bridal shower data:', error);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Helper to persist state to MongoDB
+  async function saveData(updatedTodos: any[], updatedGifts: any[], updatedDetails: any, updatedNotes: any[]) {
+    try {
+      await fetch('/api/bridal-shower', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          todos: updatedTodos,
+          gifts: updatedGifts,
+          details: updatedDetails,
+          notes: updatedNotes
+        })
+      });
+    } catch (error) {
+      console.error('Failed to save bridal shower data:', error);
+    }
+  }
 
   const addGift = () => {
     if (!newGift.guest || !newGift.gift) return;
-    setGifts([...gifts, { id: Date.now(), ...newGift, thankYouSent: false }]);
+    const updated = [...gifts, { id: Date.now(), ...newGift, thankYouSent: false }];
+    setGifts(updated);
     setNewGift({ guest: '', gift: '' });
+    saveData(todos, updated, details, notes);
+  };
+
+  const toggleGiftThankYou = (id: number, thankYouSent: boolean) => {
+    const updated = gifts.map(g => g.id === id ? { ...g, thankYouSent } : g);
+    setGifts(updated);
+    saveData(todos, updated, details, notes);
+  };
+
+  const deleteGift = (id: number) => {
+    const updated = gifts.filter(g => g.id !== id);
+    setGifts(updated);
+    saveData(todos, updated, details, notes);
+  };
+
+  const addNote = () => {
+    if (!newNote.trim()) return;
+    const updated = [...notes, { id: Date.now(), text: newNote.trim(), editingId: null }];
+    setNotes(updated);
+    setNewNote('');
+    saveData(todos, gifts, details, updated);
+  };
+
+  const deleteNote = (id: number) => {
+    const updated = notes.filter(n => n.id !== id);
+    setNotes(updated);
+    saveData(todos, gifts, details, updated);
+  };
+
+  const startEditNote = (id: number, text: string) => {
+    setEditingNoteId(id);
+    setEditingNoteText(text);
+  };
+
+  const saveEditNote = (id: number) => {
+    if (!editingNoteText.trim()) return;
+    const updated = notes.map(n => n.id === id ? { ...n, text: editingNoteText.trim() } : n);
+    setNotes(updated);
+    setEditingNoteId(null);
+    setEditingNoteText('');
+    saveData(todos, gifts, details, updated);
   };
 
   return (
@@ -175,22 +267,143 @@ export default function BridalShowerPage() {
                 <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--accent-primary)' }}>{timeline}</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {items.map(todo => (
-                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={todo.completed} 
-                        onChange={(e) => setTodos(todos.map(t => t.id === todo.id ? { ...t, completed: e.target.checked } : t))}
-                      />
-                      <span style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{todo.task}</span>
+                    <div 
+                      key={todo.id} 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        padding: '0.5rem', 
+                        background: 'var(--bg-secondary)', 
+                        borderRadius: 'var(--radius-sm)' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={todo.completed} 
+                          onChange={(e) => {
+                            const updated = todos.map(t => t.id === todo.id ? { ...t, completed: e.target.checked } : t);
+                            setTodos(updated);
+                            saveData(updated, gifts, details, notes);
+                          }}
+                        />
+                        {editingTodoId === todo.id ? (
+                          <input
+                            type="text"
+                            value={editingTodoText}
+                            onChange={(e) => setEditingTodoText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const updated = todos.map(t => t.id === todo.id ? { ...t, task: editingTodoText } : t);
+                                setTodos(updated);
+                                setEditingTodoId(null);
+                                saveData(updated, gifts, details, notes);
+                              }
+                            }}
+                            style={{ flex: 1, padding: '0.2rem', fontSize: '0.85rem', border: '1px solid var(--accent-primary)', borderRadius: '4px' }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)', fontSize: '0.9rem' }}>
+                            {todo.task}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.25rem' }} className="no-print">
+                        {editingTodoId === todo.id ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                const updated = todos.map(t => t.id === todo.id ? { ...t, task: editingTodoText } : t);
+                                setTodos(updated);
+                                setEditingTodoId(null);
+                                saveData(updated, gifts, details, notes);
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#2e7d32', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditingTodoId(null)}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingTodoId(todo.id);
+                                setEditingTodoText(todo.task);
+                              }}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => {
+                                const updated = todos.filter(t => t.id !== todo.id);
+                                setTodos(updated);
+                                saveData(updated, gifts, details, notes);
+                              }}
+                              style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              ✕
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Add Custom Task under timeline card */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }} className="no-print">
+                  <input
+                    type="text"
+                    placeholder="Add custom task..."
+                    id={`new-task-${timeline}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.currentTarget;
+                        const taskText = input.value.trim();
+                        if (taskText) {
+                          const updated = [...todos, { id: Date.now(), task: taskText, timeline, completed: false }];
+                          setTodos(updated);
+                          saveData(updated, gifts, details, notes);
+                          input.value = '';
+                        }
+                      }
+                    }}
+                    style={{ flex: 1, padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)', fontSize: '0.85rem' }}
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById(`new-task-${timeline}`) as HTMLInputElement;
+                      const taskText = input?.value.trim();
+                      if (taskText) {
+                        const updated = [...todos, { id: Date.now(), task: taskText, timeline, completed: false }];
+                        setTodos(updated);
+                        saveData(updated, gifts, details, notes);
+                        input.value = '';
+                      }
+                    }}
+                    className="btn btn-primary"
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Sidebar: Details & Gifts */}
+        {/* Sidebar: Details, Gifts, Notes */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {/* Event Details */}
           <div className="card" style={{ padding: '1.5rem' }}>
@@ -198,27 +411,81 @@ export default function BridalShowerPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Date</label>
-                <input type="date" value={details.date} onChange={(e) => setDetails({ ...details, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="date" 
+                  value={details.date} 
+                  onChange={(e) => {
+                    const updated = { ...details, date: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Time</label>
-                <input type="text" value={details.time} onChange={(e) => setDetails({ ...details, time: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="text" 
+                  value={details.time} 
+                  onChange={(e) => {
+                    const updated = { ...details, time: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Location</label>
-                <input type="text" value={details.location} onChange={(e) => setDetails({ ...details, location: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="text" 
+                  value={details.location} 
+                  onChange={(e) => {
+                    const updated = { ...details, location: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Host</label>
-                <input type="text" value={details.host} onChange={(e) => setDetails({ ...details, host: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="text" 
+                  value={details.host} 
+                  onChange={(e) => {
+                    const updated = { ...details, host: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Theme</label>
-                <input type="text" value={details.theme} onChange={(e) => setDetails({ ...details, theme: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="text" 
+                  value={details.theme} 
+                  onChange={(e) => {
+                    const updated = { ...details, theme: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Budget</label>
-                <input type="text" value={details.budget} onChange={(e) => setDetails({ ...details, budget: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} />
+                <input 
+                  type="text" 
+                  value={details.budget} 
+                  onChange={(e) => {
+                    const updated = { ...details, budget: e.target.value };
+                    setDetails(updated);
+                    saveData(todos, gifts, updated, notes);
+                  }} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }} 
+                />
               </div>
             </div>
           </div>
@@ -287,17 +554,66 @@ export default function BridalShowerPage() {
                       <input 
                         type="checkbox" 
                         checked={gift.thankYouSent} 
-                        onChange={(e) => setGifts(gifts.map(g => g.id === gift.id ? { ...g, thankYouSent: e.target.checked } : g))}
+                        onChange={(e) => toggleGiftThankYou(gift.id, e.target.checked)}
                       /> Thank You
                     </label>
                     <button 
-                      onClick={() => setGifts(gifts.filter(g => g.id !== gift.id))}
+                      onClick={() => deleteGift(gift.id)}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       className="no-print"
                     >
                       ×
                     </button>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes Card */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--accent-primary)' }}>📝 Notes</h2>
+
+            {/* Add Note */}
+            <div className="no-print" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Add a note..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addNote()}
+                style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--neutral-gray)' }}
+              />
+              <button className="btn btn-primary" onClick={addNote}>Add</button>
+            </div>
+
+            {/* Notes List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {notes.length === 0 && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>No notes yet. Add one above!</p>
+              )}
+              {notes.map(note => (
+                <div key={note.id} style={{ padding: '0.6rem 0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {editingNoteId === note.id ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingNoteText}
+                        onChange={(e) => setEditingNoteText(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEditNote(note.id)}
+                        style={{ flex: 1, padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid var(--accent-primary)' }}
+                        autoFocus
+                      />
+                      <button onClick={() => saveEditNote(note.id)} style={{ background: 'none', border: 'none', color: '#2e7d32', cursor: 'pointer', fontWeight: 'bold' }}>✓</button>
+                      <button onClick={() => setEditingNoteId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ flex: 1, fontSize: '0.9rem' }}>{note.text}</span>
+                      <button onClick={() => startEditNote(note.id, note.text)} className="no-print" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>✏️</button>
+                      <button onClick={() => deleteNote(note.id)} className="no-print" style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>×</button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

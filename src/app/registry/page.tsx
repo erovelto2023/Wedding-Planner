@@ -36,6 +36,9 @@ interface ReturnItem {
   action: string; // 'Return' | 'Exchange' | 'Keep'
   status: string; // 'Pending' | 'Done'
   returnDeadline: string;
+  carrier?: string;
+  trackingNumber?: string;
+  refundValue?: number;
 }
 
 export default function RegistryPage() {
@@ -51,13 +54,27 @@ export default function RegistryPage() {
   // Form input states
   const [newItem, setNewItem] = useState<Partial<RegistryItem>>({ name: '', store: 'Amazon', price: 0, category: 'Kitchen', status: 'Available', priority: 'Medium', guestName: '' });
   const [newFund, setNewFund] = useState<Partial<CashFund>>({ name: '', target: 0, raised: 0, description: '' });
-  const [newReturn, setNewReturn] = useState<Partial<ReturnItem>>({ name: '', action: 'Return', status: 'Pending', returnDeadline: '' });
+  const [newReturn, setNewReturn] = useState<Partial<ReturnItem>>({ 
+    name: '', 
+    action: 'Return', 
+    status: 'Pending', 
+    returnDeadline: '',
+    carrier: '',
+    trackingNumber: '',
+    refundValue: 0
+  });
 
   // AI Thank You Note Assistant States
   const [selectedPurchasedGiftId, setSelectedPurchasedGiftId] = useState<string>('');
   const [aiNoteTone, setAiNoteTone] = useState<string>('Warm & Sincere');
+  const [aiCustomDetail, setAiCustomDetail] = useState<string>('');
   const [draftingNote, setDraftingNote] = useState<boolean>(false);
   const [customDraftOutput, setCustomDraftOutput] = useState<string>('');
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+
+  // Inline Return Editing States
+  const [editingReturnId, setEditingReturnId] = useState<string | null>(null);
+  const [editingReturnForm, setEditingReturnForm] = useState<Partial<ReturnItem>>({});
 
   useEffect(() => {
     async function loadData() {
@@ -131,7 +148,7 @@ export default function RegistryPage() {
     }
   };
 
-  // Delete Item
+  // Delete Registry Item
   const handleDeleteItem = async (id: string) => {
     try {
       const res = await fetch(`/api/registry?type=items&id=${id}`, {
@@ -143,6 +160,53 @@ export default function RegistryPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Delete Fund
+  const handleDeleteFund = async (id: string) => {
+    try {
+      const res = await fetch(`/api/registry?type=funds&id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setFunds(funds.filter(f => f._id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Delete Note
+  const handleDeleteNote = async (id: string) => {
+    try {
+      const res = await fetch(`/api/registry?type=notes&id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setNotes(notes.filter(n => n._id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Delete Return
+  const handleDeleteReturn = async (id: string) => {
+    try {
+      const res = await fetch(`/api/registry?type=returns&id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setReturns(returns.filter(r => r._id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Print Registry
+  const handlePrint = () => {
+    window.print();
   };
 
   // Add Cash Fund
@@ -190,12 +254,23 @@ export default function RegistryPage() {
       const res = await fetch('/api/registry?type=returns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newReturn)
+        body: JSON.stringify({
+          ...newReturn,
+          refundValue: Number(newReturn.refundValue || 0)
+        })
       });
       if (res.ok) {
         const added = await res.json();
         setReturns([...returns, added]);
-        setNewReturn({ name: '', action: 'Return', status: 'Pending', returnDeadline: '' });
+        setNewReturn({ 
+          name: '', 
+          action: 'Return', 
+          status: 'Pending', 
+          returnDeadline: '',
+          carrier: '',
+          trackingNumber: '',
+          refundValue: 0
+        });
       }
     } catch (err) {
       console.error(err);
@@ -213,6 +288,26 @@ export default function RegistryPage() {
       });
       if (res.ok) {
         setReturns(returns.map(r => r._id === item._id ? updated : r));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Save Fully Edited Return Item
+  const handleSaveEditedReturn = async (id: string) => {
+    const original = returns.find(r => r._id === id);
+    if (!original) return;
+    const updated = { ...original, ...editingReturnForm, refundValue: Number(editingReturnForm.refundValue || 0) };
+    try {
+      const res = await fetch('/api/registry?type=returns', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      if (res.ok) {
+        setReturns(returns.map(r => r._id === id ? updated : r));
+        setEditingReturnId(null);
       }
     } catch (err) {
       console.error(err);
@@ -248,26 +343,67 @@ export default function RegistryPage() {
     
     setTimeout(() => {
       let draftText = '';
+      const guestName = targetGift.guestName || 'Friend';
+      const giftName = targetGift.name;
+      const memoryText = aiCustomDetail.trim() 
+        ? ` We also wanted to mention how much we loved ${aiCustomDetail.trim()}—it truly made our night unforgettable!`
+        : '';
+
       if (aiNoteTone === 'Warm & Sincere') {
-        draftText = `Dear ${targetGift.guestName || 'Friend'},\n\nThank you so much for the absolutely wonderful ${targetGift.name}! Having this for our home means the world to us, and we will think of your beautiful generosity every time we use it. We are so lucky to have you in our lives!\n\nWarmest love,\nEric & Partner`;
+        draftText = `Dear ${guestName},\n\nThank you so much for the absolutely wonderful ${giftName}! Having this for our home means the world to us, and we will think of your beautiful generosity every time we use it.${memoryText} We are so lucky to have you in our lives!\n\nWarmest love,\nEric & Partner`;
       } else if (aiNoteTone === 'Short & Sweet') {
-        draftText = `Dear ${targetGift.guestName || 'Friend'},\n\nThank you so much for the gorgeous ${targetGift.name}! We absolutely love it and appreciate your kind support. It was wonderful celebrating our wedding together!\n\nBest,\nEric & Partner`;
-      } else {
-        draftText = `Dear ${targetGift.guestName || 'Friend'},\n\nWe are incredibly grateful for the ${targetGift.name}! Your thoughtfulness stands out, and it will be an absolute staple in our home for years to come. Thank you for celebrating this milestone with us!\n\nWith gratitude,\nEric & Partner`;
+        draftText = `Dear ${guestName},\n\nThank you so much for the gorgeous ${giftName}! We absolutely love it and appreciate your kind support.${memoryText} It was wonderful celebrating our wedding together!\n\nBest,\nEric & Partner`;
+      } else if (aiNoteTone === 'Formal') {
+        draftText = `Dear ${guestName},\n\nWe are incredibly grateful for the ${giftName}! Your thoughtfulness stands out, and it will be an absolute staple in our home for years to come.${memoryText} Thank you for celebrating this milestone with us!\n\nWith gratitude,\nEric & Partner`;
+      } else { // Playful & Fun
+        draftText = `Dear ${guestName},\n\nOh my goodness, thank you so much for the epic ${giftName}! You seriously know us so well. We're already putting it to excellent use!${memoryText} Thanks for bringing so much energy and love to our wedding celebration!\n\nCheers,\nEric & Partner`;
       }
       
       setCustomDraftOutput(draftText);
       setDraftingNote(false);
-    }, 1200);
+    }, 1000);
   };
 
-  // Smart Price Tier Curation Engine calculations
+  // Helper to copy text to clipboard with success animation
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  // Helper to calculate days remaining until return deadline
+  const getDeadlineStatus = (deadlineStr: string) => {
+    if (!deadlineStr) return { label: 'No deadline', color: 'var(--text-secondary)' };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(deadlineStr + 'T00:00:00');
+    deadline.setHours(0, 0, 0, 0);
+    const diffTime = deadline.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { label: `❌ Expired (${Math.abs(diffDays)} days ago)`, color: '#dc2626' };
+    } else if (diffDays === 0) {
+      return { label: `⚠️ Expiring today!`, color: '#e65100' };
+    } else if (diffDays <= 7) {
+      return { label: `⚠️ Expiring in ${diffDays} days`, color: '#f57c00' };
+    } else {
+      return { label: `⏳ ${diffDays} days remaining`, color: '#2e7d32' };
+    }
+  };
+
+  // Calculation metrics
   const priceUnder50 = items.filter(i => i.price < 50).length;
   const price50to200 = items.filter(i => i.price >= 50 && i.price <= 200).length;
   const priceOver200 = items.filter(i => i.price > 200).length;
 
   const totalRegistryValue = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
   const totalRegistryGiftsCount = items.filter(i => i.status === 'Purchased').length;
+
+  // Total Money Recovered from Post-Wedding Returns
+  const totalMoneyRecovered = returns
+    .filter(r => r.status === 'Done')
+    .reduce((sum, r) => sum + Number(r.refundValue || 0), 0);
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -285,70 +421,34 @@ export default function RegistryPage() {
             Aggregate multiple stores, track physical gifts, build cash funds, and draft automated thank-you cards.
           </p>
         </div>
+        <button onClick={handlePrint} className="btn btn-secondary">🖨️ Print Manifest</button>
       </div>
 
       {/* Tabs Menu */}
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid var(--neutral-gray)', marginBottom: '2rem', paddingBottom: '0.5rem' }}>
-        <button 
-          onClick={() => setActiveTab('registry')} 
-          style={{ 
-            padding: '0.75rem 1.5rem', 
-            background: 'none', 
-            border: 'none', 
-            fontSize: '1rem', 
-            fontWeight: 600, 
-            color: activeTab === 'registry' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'registry' ? '3px solid var(--accent-primary)' : 'none',
-            cursor: 'pointer'
-          }}
-        >
-          🎁 Universal Registry
-        </button>
-        <button 
-          onClick={() => setActiveTab('funds')} 
-          style={{ 
-            padding: '0.75rem 1.5rem', 
-            background: 'none', 
-            border: 'none', 
-            fontSize: '1rem', 
-            fontWeight: 600, 
-            color: activeTab === 'funds' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'funds' ? '3px solid var(--accent-primary)' : 'none',
-            cursor: 'pointer'
-          }}
-        >
-          💸 Cash & Experience Funds
-        </button>
-        <button 
-          onClick={() => setActiveTab('notes')} 
-          style={{ 
-            padding: '0.75rem 1.5rem', 
-            background: 'none', 
-            border: 'none', 
-            fontSize: '1rem', 
-            fontWeight: 600, 
-            color: activeTab === 'notes' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'notes' ? '3px solid var(--accent-primary)' : 'none',
-            cursor: 'pointer'
-          }}
-        >
-          💌 AI Thank-You Assistant
-        </button>
-        <button 
-          onClick={() => setActiveTab('returns')} 
-          style={{ 
-            padding: '0.75rem 1.5rem', 
-            background: 'none', 
-            border: 'none', 
-            fontSize: '1rem', 
-            fontWeight: 600, 
-            color: activeTab === 'returns' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'returns' ? '3px solid var(--accent-primary)' : 'none',
-            cursor: 'pointer'
-          }}
-        >
-          🔄 Post-Wedding returns
-        </button>
+        {[
+          { id: 'registry', label: '🎁 Universal Registry' },
+          { id: 'funds', label: '💸 Cash & Experience Funds' },
+          { id: 'notes', label: '💌 AI Thank-You Assistant' },
+          { id: 'returns', label: '🔄 Post-Wedding Returns & Exchange' }
+        ].map(t => (
+          <button 
+            key={t.id}
+            onClick={() => setActiveTab(t.id)} 
+            style={{ 
+              padding: '0.75rem 1.5rem', 
+              background: 'none', 
+              border: 'none', 
+              fontSize: '1rem', 
+              fontWeight: 600, 
+              color: activeTab === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              borderBottom: activeTab === t.id ? '3px solid var(--accent-primary)' : 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab 1: UNIVERSAL REGISTRY */}
@@ -588,7 +688,7 @@ export default function RegistryPage() {
                       <div style={{ width: `${percent}%`, background: 'var(--accent-primary)', height: '100%' }}></div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <button 
                         onClick={() => handleContributeFund(f, 100)}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', cursor: 'pointer', background: 'none' }}
@@ -600,6 +700,62 @@ export default function RegistryPage() {
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', cursor: 'pointer', background: 'none' }}
                       >
                         ➕ Contribute $500
+                      </button>
+
+                      {/* Custom Contribution Amount */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>$</span>
+                        <input
+                          type="number"
+                          placeholder="Custom Amount"
+                          id={`custom-contrib-${f._id}`}
+                          style={{
+                            width: '90px',
+                            padding: '0.35rem 0.5rem',
+                            fontSize: '0.75rem',
+                            border: '1px solid var(--neutral-gray)',
+                            borderRadius: '4px',
+                            background: 'var(--bg-primary)'
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const input = e.currentTarget;
+                              const amount = Number(input.value);
+                              if (amount > 0) {
+                                handleContributeFund(f, amount);
+                                input.value = '';
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const input = document.getElementById(`custom-contrib-${f._id}`) as HTMLInputElement;
+                            const amount = Number(input?.value || 0);
+                            if (amount > 0) {
+                              handleContributeFund(f, amount);
+                              input.value = '';
+                            }
+                          }}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.75rem',
+                            background: 'var(--accent-primary)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Contribute
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => handleDeleteFund(f._id!)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: '4px', cursor: 'pointer', background: 'none', color: '#dc2626', marginLeft: 'auto' }}
+                      >
+                        🗑️ Delete Fund
                       </button>
                     </div>
                   </div>
@@ -686,21 +842,29 @@ export default function RegistryPage() {
                         {note.noteDraft}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleToggleNoteStatus(note)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        background: note.status === 'Sent' ? '#2e7d32' : '#d97706',
-                        color: 'white'
-                      }}
-                    >
-                      {note.status === 'Sent' ? '📬 Sent' : '⏳ Pending'}
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <button
+                        onClick={() => handleToggleNoteStatus(note)}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          background: note.status === 'Sent' ? '#2e7d32' : '#d97706',
+                          color: 'white'
+                        }}
+                      >
+                        {note.status === 'Sent' ? '📬 Sent' : '⏳ Pending'}
+                      </button>
+                      <button 
+                        onClick={() => copyToClipboard(note.noteDraft)}
+                        style={{ padding: '0.25rem', background: 'none', border: '1px solid var(--neutral-gray)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem' }}
+                      >
+                        📋 Copy Card
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -709,7 +873,7 @@ export default function RegistryPage() {
 
           {/* AI Thank You Card generator tool */}
           <div>
-            <div className="card" style={{ padding: '1.5rem', background: 'white', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ padding: '1.5rem', background: 'white', minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '0.5rem' }}>🤖 AI Thank-You Generator</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
                 Select a purchased registry item to draft custom, brand-aligned gratitude copy instantly.
@@ -734,17 +898,17 @@ export default function RegistryPage() {
 
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Select Tone</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {['Warm & Sincere', 'Short & Sweet', 'Formal'].map(tone => (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {['Warm & Sincere', 'Short & Sweet', 'Formal', 'Playful & Fun'].map(tone => (
                       <button
                         key={tone}
                         onClick={() => setAiNoteTone(tone)}
                         style={{
-                          flex: 1,
+                          flex: '1 1 45%',
                           padding: '0.4rem',
                           borderRadius: '4px',
                           border: aiNoteTone === tone ? '2px solid var(--accent-primary)' : '1px solid var(--neutral-gray)',
-                          background: aiNoteTone === tone ? 'rgba(var(--accent-primary-rgb), 0.05)' : 'none',
+                          background: aiNoteTone === tone ? 'rgba(109, 40, 217, 0.05)' : 'none',
                           color: aiNoteTone === tone ? 'var(--accent-primary)' : 'var(--text-primary)',
                           fontWeight: 600,
                           fontSize: '0.75rem',
@@ -757,6 +921,19 @@ export default function RegistryPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                    ✍️ Personalize with a Specific Memory / Detail (Optional):
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. tear up the dance floor, see you at brunch"
+                    value={aiCustomDetail}
+                    onChange={(e) => setAiCustomDetail(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)', fontSize: '0.8rem' }}
+                  />
+                </div>
+
                 <button 
                   onClick={triggerAIThankYouDraft}
                   disabled={draftingNote || !selectedPurchasedGiftId}
@@ -767,9 +944,10 @@ export default function RegistryPage() {
                 </button>
 
                 {/* AI generated note text output box */}
-                <div style={{ flex: 1, minHeight: '200px', background: 'var(--bg-secondary)', border: '1px solid var(--neutral-gray)', borderRadius: '8px', padding: '1rem', overflowY: 'auto' }}>
+                <div style={{ flex: 1, minHeight: '220px', background: 'var(--bg-secondary)', border: '1px solid var(--neutral-gray)', borderRadius: '8px', padding: '1rem', overflowY: 'auto', position: 'relative' }}>
                   {draftingNote && (
                     <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      <div className="shimmer" style={{ width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)', position: 'absolute', top: 0, left: 0 }}></div>
                       <p>Drafting personalized card...</p>
                     </div>
                   )}
@@ -784,24 +962,32 @@ export default function RegistryPage() {
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--neutral-gray)', paddingBottom: '0.5rem', marginBottom: '0.75rem', fontSize: '0.7rem' }}>
                         <span style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>✨ AI Personalization Active</span>
-                        <button 
-                          onClick={() => {
-                            const note = notes.find(n => n.giftName === items.find(i => i._id === selectedPurchasedGiftId)?.name);
-                            if (note) {
-                              const updated = { ...note, noteDraft: customDraftOutput };
-                              fetch('/api/registry?type=notes', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(updated)
-                              }).then(res => {
-                                if (res.ok) setNotes(notes.map(n => n._id === note._id ? updated : n));
-                              });
-                            }
-                          }}
-                          style={{ border: 'none', background: 'none', color: '#2e7d32', cursor: 'pointer', fontWeight: 'bold' }}
-                        >
-                          💾 Save Draft
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => copyToClipboard(customDraftOutput)}
+                            style={{ border: 'none', background: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            {copySuccess ? '📋 Copied!' : '📋 Copy Draft'}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const note = notes.find(n => n.giftName === items.find(i => i._id === selectedPurchasedGiftId)?.name);
+                              if (note) {
+                                const updated = { ...note, noteDraft: customDraftOutput };
+                                fetch('/api/registry?type=notes', {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify(updated)
+                                }).then(res => {
+                                  if (res.ok) setNotes(notes.map(n => n._id === note._id ? updated : n));
+                                });
+                              }
+                            }}
+                            style={{ border: 'none', background: 'none', color: '#2e7d32', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            💾 Save Draft
+                          </button>
+                        </div>
                       </div>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', whiteSpace: 'pre-line', margin: 0 }}>
                         {customDraftOutput}
@@ -823,51 +1009,177 @@ export default function RegistryPage() {
           
           {/* Active returns inventory */}
           <div className="card" style={{ padding: '1.5rem', background: 'white' }}>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '0.5rem' }}>🔄 Post-Wedding Returns & Exchange Hub</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Track warranty registration details, exchange tasks, and returns deadlines.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '0.25rem' }}>🔄 Post-Wedding Returns & Exchange Hub</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Track warranty registration details, exchange tasks, and returns deadlines.
+                </p>
+              </div>
+              
+              {/* Financial recovery visual badge */}
+              <div style={{ background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#2e7d32', padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'right' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase' }}>Refund Credit Recovered</div>
+                <strong style={{ fontSize: '1.25rem' }}>${totalMoneyRecovered.toFixed(2)}</strong>
+              </div>
+            </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--neutral-gray)', textAlign: 'left' }}>
                   <th style={{ padding: '0.5rem' }}>Duplicate/Wrong Gift</th>
                   <th style={{ padding: '0.5rem' }}>Action Required</th>
-                  <th style={{ padding: '0.5rem' }}>Deadline Date</th>
+                  <th style={{ padding: '0.5rem' }}>Carrier & Tracking</th>
+                  <th style={{ padding: '0.5rem' }}>Refund Value</th>
+                  <th style={{ padding: '0.5rem' }}>Deadline Status</th>
                   <th style={{ padding: '0.5rem', width: '100px' }}>Status</th>
+                  <th style={{ padding: '0.5rem', width: '60px' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {returns.map(ret => (
-                  <tr key={ret._id} style={{ borderBottom: '1px solid var(--neutral-gray)' }}>
-                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{ret.name}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      <span className="pill-badge" style={{ background: 'var(--bg-secondary)', fontSize: '0.7rem' }}>
-                        {ret.action}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#dc2626', fontWeight: 600 }}>
-                      ⚠️ {ret.returnDeadline}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      <button 
-                        onClick={() => handleToggleReturnStatus(ret)}
-                        style={{
-                          border: 'none',
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '4px',
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          background: ret.status === 'Done' ? '#2e7d32' : 'var(--neutral-gray)',
-                          color: ret.status === 'Done' ? 'white' : 'var(--text-primary)'
-                        }}
-                      >
-                        {ret.status === 'Done' ? '✅ Completed' : '⏳ Pending'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {returns.map(ret => {
+                  const deadlineInfo = getDeadlineStatus(ret.returnDeadline);
+                  const isEditing = editingReturnId === ret._id;
+
+                  return (
+                    <tr key={ret._id} style={{ borderBottom: '1px solid var(--neutral-gray)' }}>
+                      {isEditing ? (
+                        <>
+                          <td style={{ padding: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              value={editingReturnForm.name || ''} 
+                              onChange={(e) => setEditingReturnForm({ ...editingReturnForm, name: e.target.value })}
+                              style={{ width: '100%', padding: '0.2rem', fontSize: '0.8rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <select 
+                              value={editingReturnForm.action || 'Return'} 
+                              onChange={(e) => setEditingReturnForm({ ...editingReturnForm, action: e.target.value })}
+                              style={{ width: '100%', padding: '0.2rem', fontSize: '0.8rem' }}
+                            >
+                              <option value="Return">Return</option>
+                              <option value="Exchange">Exchange</option>
+                              <option value="Keep">Keep</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <input 
+                                type="text" 
+                                placeholder="Carrier" 
+                                value={editingReturnForm.carrier || ''} 
+                                onChange={(e) => setEditingReturnForm({ ...editingReturnForm, carrier: e.target.value })}
+                                style={{ width: '50px', padding: '0.2rem', fontSize: '0.8rem' }}
+                              />
+                              <input 
+                                type="text" 
+                                placeholder="Tracking" 
+                                value={editingReturnForm.trackingNumber || ''} 
+                                onChange={(e) => setEditingReturnForm({ ...editingReturnForm, trackingNumber: e.target.value })}
+                                style={{ width: '80px', padding: '0.2rem', fontSize: '0.8rem' }}
+                              />
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <input 
+                              type="number" 
+                              value={editingReturnForm.refundValue || ''} 
+                              onChange={(e) => setEditingReturnForm({ ...editingReturnForm, refundValue: Number(e.target.value) })}
+                              style={{ width: '60px', padding: '0.2rem', fontSize: '0.8rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <input 
+                              type="date" 
+                              value={editingReturnForm.returnDeadline || ''} 
+                              onChange={(e) => setEditingReturnForm({ ...editingReturnForm, returnDeadline: e.target.value })}
+                              style={{ width: '100%', padding: '0.2rem', fontSize: '0.8rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }} colSpan={2}>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button 
+                                onClick={() => handleSaveEditedReturn(ret._id!)}
+                                style={{ padding: '0.25rem 0.5rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                              >
+                                Save
+                              </button>
+                              <button 
+                                onClick={() => setEditingReturnId(null)}
+                                style={{ padding: '0.25rem 0.5rem', background: 'var(--neutral-gray)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{ret.name}</td>
+                          <td style={{ padding: '0.75rem 0.5rem' }}>
+                            <span className="pill-badge" style={{ background: 'var(--bg-secondary)', fontSize: '0.7rem' }}>
+                              {ret.action}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 0.5rem' }}>
+                            {ret.carrier ? (
+                              <div style={{ fontSize: '0.75rem' }}>
+                                <strong>{ret.carrier}</strong>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{ret.trackingNumber || 'No tracking'}</div>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
+                            ${(ret.refundValue || 0).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '0.75rem 0.5rem', color: deadlineInfo.color, fontWeight: 600, fontSize: '0.75rem' }}>
+                            {deadlineInfo.label}
+                          </td>
+                          <td style={{ padding: '0.75rem 0.5rem' }}>
+                            <button 
+                              onClick={() => handleToggleReturnStatus(ret)}
+                              style={{
+                                border: 'none',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                background: ret.status === 'Done' ? '#2e7d32' : 'var(--neutral-gray)',
+                                color: ret.status === 'Done' ? 'white' : 'var(--text-primary)'
+                              }}
+                            >
+                              {ret.status === 'Done' ? '✅ Done' : '⏳ Pending'}
+                            </button>
+                          </td>
+                          <td style={{ padding: '0.75rem 0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button 
+                                onClick={() => {
+                                  setEditingReturnId(ret._id!);
+                                  setEditingReturnForm(ret);
+                                }}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteReturn(ret._id!)}
+                                style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -889,17 +1201,52 @@ export default function RegistryPage() {
                   />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Action Required</label>
-                  <select
-                    value={newReturn.action}
-                    onChange={(e) => setNewReturn({ ...newReturn, action: e.target.value })}
-                    style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)' }}
-                  >
-                    <option value="Return">🔄 Return for Refund</option>
-                    <option value="Exchange">🔄 Exchange Size/Color</option>
-                    <option value="Keep">🏠 Keep (Register Warranty)</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Action Required</label>
+                    <select
+                      value={newReturn.action}
+                      onChange={(e) => setNewReturn({ ...newReturn, action: e.target.value })}
+                      style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)' }}
+                    >
+                      <option value="Return">🔄 Return for Refund</option>
+                      <option value="Exchange">🔄 Exchange Item</option>
+                      <option value="Keep">🏠 Keep (Warranty)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Refund Value ($)</label>
+                    <input 
+                      type="number"
+                      placeholder="e.g. 150"
+                      value={newReturn.refundValue || ''}
+                      onChange={(e) => setNewReturn({ ...newReturn, refundValue: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Courier / Carrier</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. UPS, FedEx"
+                      value={newReturn.carrier || ''}
+                      onChange={(e) => setNewReturn({ ...newReturn, carrier: e.target.value })}
+                      style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Tracking Number</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. 1Z999AA10123"
+                      value={newReturn.trackingNumber || ''}
+                      onChange={(e) => setNewReturn({ ...newReturn, trackingNumber: e.target.value })}
+                      style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--neutral-gray)', borderRadius: '4px', background: 'var(--bg-primary)' }}
+                    />
+                  </div>
                 </div>
 
                 <div>
